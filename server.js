@@ -4,11 +4,88 @@ const cors = require('cors');
 const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+const session = require('express-session');
+const passport = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const VapiIntegration = require('./vapi-config');
+const Database = require('./database');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Authentication configuration
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const JWT_EXPIRES_IN = '24h';
+
+// Initialize database
+const database = new Database();
+
+// Session configuration
+app.use(session({
+  secret: JWT_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: false } // Set to true in production with HTTPS
+}));
+
+// Passport configuration
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Google OAuth Strategy
+passport.use(new GoogleStrategy({
+  clientID: process.env.GOOGLE_CLIENT_ID || 'your-google-client-id',
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'your-google-client-secret',
+  callbackURL: "/auth/google/callback"
+}, async (accessToken, refreshToken, profile, done) => {
+  try {
+    // Check if user exists with this Google ID
+    let user = await database.findUserByGoogleId(profile.id);
+    
+    if (user) {
+      await database.updateUserLastLogin(user.id);
+      return done(null, user);
+    }
+    
+    // Check if user exists with this email
+    user = await database.findUserByEmail(profile.emails[0].value);
+    
+    if (user) {
+      // Update existing user with Google ID
+      await database.updateUserWithGoogleId(user.id, profile.id);
+      await database.updateUserLastLogin(user.id);
+      return done(null, user);
+    }
+    
+    // Create new user
+    const newUser = await database.createUser({
+      username: profile.displayName || profile.emails[0].value.split('@')[0],
+      email: profile.emails[0].value,
+      google_id: profile.id,
+      role: 'user'
+    });
+    
+    return done(null, newUser);
+  } catch (error) {
+    return done(error, null);
+  }
+}));
+
+passport.serializeUser((user, done) => {
+  done(null, user.id);
+});
+
+passport.deserializeUser(async (id, done) => {
+  try {
+    const user = await database.findUserById(id);
+    done(null, user);
+  } catch (error) {
+    done(error, null);
+  }
+});
 
 // Middleware
 app.use(cors());
@@ -43,6 +120,39 @@ const upload = multer({
     fileSize: 5 * 1024 * 1024 // 5MB limit
   }
 });
+
+// Authentication middleware
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Access token required' });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: 'Invalid or expired token' });
+    }
+    req.user = user;
+    next();
+  });
+};
+
+// Check if user is authenticated (for frontend routes)
+const checkAuth = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (token) {
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+      if (!err) {
+        req.user = user;
+      }
+    });
+  }
+  next();
+};
 
 // In-memory storage for demo (use database in production)
 let negotiations = {};
@@ -80,13 +190,161 @@ const mockCSRResponses = {
 
 // Routes
 
+// Authentication routes
+app.post('/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required' });
+    }
+
+    const user = await database.findUserByUsername(username);
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const isValidPassword = await database.validatePassword(password, user.password);
+    if (!isValidPassword) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Update last login
+    await database.updateUserLastLogin(user.id);
+
+    const token = jwt.sign(
+      { 
+        id: user.id,
+        username: user.username, 
+        role: user.role 
+      },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Google OAuth routes
+app.get('/auth/google',
+  passport.authenticate('google', { scope: ['profile', 'email'] })
+);
+
+app.get('/auth/google/callback',
+  passport.authenticate('google', { failureRedirect: '/login?error=google_auth_failed' }),
+  async (req, res) => {
+    try {
+      // Generate JWT token for the authenticated user
+      const token = jwt.sign(
+        { 
+          id: req.user.id,
+          username: req.user.username, 
+          role: req.user.role 
+        },
+        JWT_SECRET,
+        { expiresIn: JWT_EXPIRES_IN }
+      );
+
+      // Redirect to frontend with token
+      res.redirect(`/?token=${token}&user=${encodeURIComponent(JSON.stringify({
+        id: req.user.id,
+        username: req.user.username,
+        email: req.user.email,
+        role: req.user.role
+      }))}`);
+    } catch (error) {
+      console.error('Google OAuth callback error:', error);
+      res.redirect('/login?error=oauth_callback_failed');
+    }
+  }
+);
+
+// User registration route
+app.post('/auth/register', async (req, res) => {
+  try {
+    const { username, email, password } = req.body;
+
+    if (!username || !email || !password) {
+      return res.status(400).json({ error: 'Username, email, and password are required' });
+    }
+
+    // Check if user already exists
+    const existingUser = await database.findUserByUsername(username) || await database.findUserByEmail(email);
+    if (existingUser) {
+      return res.status(400).json({ error: 'User already exists with this username or email' });
+    }
+
+    const user = await database.createUser({
+      username,
+      email,
+      password,
+      role: 'user'
+    });
+
+    const token = jwt.sign(
+      { 
+        id: user.id,
+        username: user.username, 
+        role: user.role 
+      },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.get('/auth/verify', authenticateToken, (req, res) => {
+  res.json({
+    success: true,
+    user: {
+      username: req.user.username,
+      role: req.user.role
+    }
+  });
+});
+
+app.post('/auth/logout', (req, res) => {
+  res.json({ success: true, message: 'Logged out successfully' });
+});
+
 // Serve the frontend
-app.get('/', (req, res) => {
+app.get('/', checkAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
 // Start negotiation endpoint
-app.post('/start', upload.single('screenshot'), async (req, res) => {
+app.post('/start', authenticateToken, upload.single('screenshot'), async (req, res) => {
   try {
     const { phoneNumber, prompt, orderNumber } = req.body;
     const screenshot = req.file;
@@ -123,7 +381,16 @@ app.post('/start', upload.single('screenshot'), async (req, res) => {
     // Generate unique negotiation ID
     const negotiationId = `neg_${++negotiationCounter}_${Date.now()}`;
     
-    // Store negotiation state
+    // Store negotiation in database
+    await database.createNegotiation(req.user.id, {
+      negotiation_id: negotiationId,
+      phone_number: cleanPhoneNumber,
+      user_message: prompt,
+      order_number: orderNumber,
+      screenshot_url: screenshot ? `/uploads/${screenshot.filename}` : null
+    });
+
+    // Store negotiation state in memory for backward compatibility
     negotiations[negotiationId] = {
       id: negotiationId,
       status: 'initiated',
@@ -191,7 +458,7 @@ app.post('/start', upload.single('screenshot'), async (req, res) => {
 });
 
 // Status endpoint for polling
-app.get('/status/:negotiationId', (req, res) => {
+app.get('/status/:negotiationId', authenticateToken, (req, res) => {
   const { negotiationId } = req.params;
   const negotiation = negotiations[negotiationId];
 
@@ -205,7 +472,7 @@ app.get('/status/:negotiationId', (req, res) => {
 });
 
 // Webhook endpoint for Vapi results
-app.post('/log', (req, res) => {
+app.post('/log', authenticateToken, (req, res) => {
   try {
     const { negotiationId, refund, code } = req.body;
 
@@ -278,7 +545,7 @@ app.post('/mock-csr', (req, res) => {
 app.use('/uploads', express.static('uploads'));
 
 // Get phone numbers endpoint
-app.get('/phone-numbers', async (req, res) => {
+app.get('/phone-numbers', authenticateToken, async (req, res) => {
   try {
     if (!vapi || !process.env.VAPI_API_KEY) {
       return res.status(400).json({
@@ -301,7 +568,7 @@ app.get('/phone-numbers', async (req, res) => {
 });
 
 // Call monitoring endpoints
-app.get('/calls', async (req, res) => {
+app.get('/calls', authenticateToken, async (req, res) => {
   try {
     if (!vapi || !process.env.VAPI_API_KEY) {
       return res.status(400).json({
@@ -326,7 +593,7 @@ app.get('/calls', async (req, res) => {
 });
 
 // Get specific call details
-app.get('/calls/:callId', async (req, res) => {
+app.get('/calls/:callId', authenticateToken, async (req, res) => {
   try {
     const { callId } = req.params;
     
@@ -353,7 +620,7 @@ app.get('/calls/:callId', async (req, res) => {
 });
 
 // Get call transcript
-app.get('/calls/:callId/transcript', async (req, res) => {
+app.get('/calls/:callId/transcript', authenticateToken, async (req, res) => {
   try {
     const { callId } = req.params;
     
@@ -378,7 +645,7 @@ app.get('/calls/:callId/transcript', async (req, res) => {
 });
 
 // Get call events (real-time monitoring)
-app.get('/calls/:callId/events', async (req, res) => {
+app.get('/calls/:callId/events', authenticateToken, async (req, res) => {
   try {
     const { callId } = req.params;
     

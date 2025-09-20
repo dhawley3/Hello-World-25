@@ -44,6 +44,37 @@
             opacity: 0.9;
         }
 
+        .user-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-info span {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
         .content {
             padding: 40px;
         }
@@ -237,7 +268,11 @@
 </head>
 <body>
     <div class="container">
-        <div class="header">
+        <div class="header" style="position: relative;">
+            <div class="user-info" id="userInfo" style="display: none;">
+                <span id="userName">Welcome, User</span>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
             <h1>🤖 AI Customer Service Negotiator</h1>
             <p>Let our AI agent handle your refunds, returns, and bill negotiations</p>
             <div style="margin-top: 20px;">
@@ -311,6 +346,61 @@
     </div>
 
     <script>
+        // Authentication functions
+        function checkAuth() {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+
+            // Verify token with server
+            fetch('/auth/verify', {
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showUserInfo(data.user);
+                } else {
+                    localStorage.removeItem('sessionToken');
+                    window.location.href = '/login';
+                }
+            })
+            .catch(error => {
+                console.error('Auth verification error:', error);
+                localStorage.removeItem('sessionToken');
+                window.location.href = '/login';
+            });
+        }
+
+        function showUserInfo(user) {
+            const userInfo = document.getElementById('userInfo');
+            const userName = document.getElementById('userName');
+            
+            userInfo.style.display = 'flex';
+            userName.textContent = `Welcome, ${user.username}`;
+        }
+
+        function logout() {
+            localStorage.removeItem('sessionToken');
+            fetch('/auth/logout', { method: 'POST' })
+                .then(() => {
+                    window.location.href = '/login';
+                })
+                .catch(error => {
+                    console.error('Logout error:', error);
+                    window.location.href = '/login';
+                });
+        }
+
+        // Initialize authentication on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuth();
+        });
+
         let currentNegotiationId = null;
         let statusInterval = null;
 
@@ -377,10 +467,14 @@
             document.getElementById('submitBtn').disabled = true;
 
             try {
-                const response = await fetch('/start', {
-                    method: 'POST',
-                    body: formData
-                });
+            const token = localStorage.getItem('sessionToken');
+            const response = await fetch('/start', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                },
+                body: formData
+            });
 
                 const result = await response.json();
 
@@ -404,7 +498,12 @@
             
             statusInterval = setInterval(async () => {
                 try {
-                    const response = await fetch(`/status/${currentNegotiationId}`);
+                    const token = localStorage.getItem('sessionToken');
+                const response = await fetch(`/status/${currentNegotiationId}`, {
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
                     const status = await response.json();
 
                     if (status.status === 'completed') {

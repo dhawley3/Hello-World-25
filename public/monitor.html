@@ -289,10 +289,39 @@
     </button>
 
     <script>
+        // Authentication functions
+        function checkAuth() {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+
+            // Verify token with server
+            fetch('/auth/verify', {
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    localStorage.removeItem('sessionToken');
+                    window.location.href = '/login';
+                }
+            })
+            .catch(error => {
+                console.error('Auth verification error:', error);
+                localStorage.removeItem('sessionToken');
+                window.location.href = '/login';
+            });
+        }
+
         let calls = [];
 
         // Load calls on page load
         document.addEventListener('DOMContentLoaded', function() {
+            checkAuth();
             refreshCalls();
             // Auto-refresh every 30 seconds
             setInterval(refreshCalls, 30000);
@@ -300,7 +329,12 @@
 
         async function refreshCalls() {
             try {
-                const response = await fetch('/calls');
+                const token = localStorage.getItem('sessionToken');
+                const response = await fetch('/calls', {
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
                 const data = await response.json();
                 
                 if (data.success) {
@@ -369,7 +403,12 @@
 
         async function viewCallDetails(callId) {
             try {
-                const response = await fetch(`/calls/${callId}`);
+                const token = localStorage.getItem('sessionToken');
+                const response = await fetch(`/calls/${callId}`, {
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
                 const data = await response.json();
                 
                 if (data.success) {
@@ -424,7 +463,12 @@
 
         async function viewCallTranscript(callId) {
             try {
-                const response = await fetch(`/calls/${callId}/transcript`);
+                const token = localStorage.getItem('sessionToken');
+                const response = await fetch(`/calls/${callId}/transcript`, {
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
                 const data = await response.json();
                 
                 if (data.success) {
@@ -445,7 +489,12 @@
 
         async function viewCallEvents(callId) {
             try {
-                const response = await fetch(`/calls/${callId}/events`);
+                const token = localStorage.getItem('sessionToken');
+                const response = await fetch(`/calls/${callId}/events`, {
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
                 const data = await response.json();
                 
                 if (data.success) {
