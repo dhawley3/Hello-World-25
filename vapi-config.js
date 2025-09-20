@@ -38,10 +38,6 @@ class VapiIntegration {
         model: "nova-2",
         language: "en",
         provider: "deepgram"
-      },
-      serverUrl: process.env.SERVER_URL || "http://localhost:3000",
-      webhook: {
-        url: `${process.env.SERVER_URL || "http://localhost:3000"}/log`
       }
     };
 
@@ -168,17 +164,11 @@ REMEMBER: Your goal is to get the best possible outcome for the customer.`;
       customer: {
         number: customerPhoneNumber
       },
-      // Enable call monitoring and recording
-      recordingEnabled: true,
-      transcriptionEnabled: true,
-      // Enable real-time monitoring
-      monitoringEnabled: true,
       metadata: {
         userMessage: userMessage,
         orderNumber: orderNumber,
         screenshotUrl: screenshotUrl,
         requestType: requestType,
-        // Add timestamp for tracking
         startTime: new Date().toISOString()
       }
     };
@@ -290,6 +280,21 @@ REMEMBER: Your goal is to get the best possible outcome for the customer.`;
       return response.data;
     } catch (error) {
       console.error('Error getting all calls:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  // Get all phone numbers
+  async getPhoneNumbers() {
+    try {
+      const response = await axios.get(
+        `${this.baseURL}/phone-number`,
+        { headers: this.headers }
+      );
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error getting phone numbers:', error.response?.data || error.message);
       throw error;
     }
   }

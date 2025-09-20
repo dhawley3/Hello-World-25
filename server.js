@@ -98,9 +98,10 @@ app.post('/start', upload.single('screenshot'), async (req, res) => {
       });
     }
 
-    // Validate phone number format
+    // Validate phone number format and clean it
+    const cleanPhoneNumber = phoneNumber.replace(/[\s-()]/g, '');
     const phoneRegex = /^\+[1-9]\d{1,14}$/;
-    if (!phoneRegex.test(phoneNumber.replace(/[\s-]/g, ''))) {
+    if (!phoneRegex.test(cleanPhoneNumber)) {
       return res.status(400).json({
         error: 'Please enter a valid phone number starting with + (e.g., +1-800-555-0123)'
       });
@@ -126,7 +127,7 @@ app.post('/start', upload.single('screenshot'), async (req, res) => {
     negotiations[negotiationId] = {
       id: negotiationId,
       status: 'initiated',
-      phoneNumber: phoneNumber,
+      phoneNumber: cleanPhoneNumber,
       prompt,
       orderNumber,
       screenshot: screenshot ? screenshot.filename : null,
@@ -136,7 +137,7 @@ app.post('/start', upload.single('screenshot'), async (req, res) => {
 
     // Prepare data for Vapi
     const vapiData = {
-      phoneNumber: phoneNumber,
+      phoneNumber: cleanPhoneNumber,
       userMessage: prompt,
       orderNumber: orderNumber,
       screenshot: screenshot ? `/uploads/${screenshot.filename}` : null,
@@ -148,10 +149,10 @@ app.post('/start', upload.single('screenshot'), async (req, res) => {
     // Use Vapi for real calls
     if (vapi && process.env.VAPI_API_KEY && process.env.VAPI_ASSISTANT_ID && process.env.VAPI_PHONE_NUMBER_ID) {
       try {
-        console.log(`📞 Calling customer service: ${phoneNumber}`);
+        console.log(`📞 Calling customer service: ${cleanPhoneNumber}`);
         
         const callResult = await vapi.startCall(
-          phoneNumber,
+          cleanPhoneNumber,
           vapiData.userMessage,
           vapiData.orderNumber,
           vapiData.screenshot
@@ -275,6 +276,29 @@ app.post('/mock-csr', (req, res) => {
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));
+
+// Get phone numbers endpoint
+app.get('/phone-numbers', async (req, res) => {
+  try {
+    if (!vapi || !process.env.VAPI_API_KEY) {
+      return res.status(400).json({
+        error: 'Vapi not configured'
+      });
+    }
+
+    const phoneNumbers = await vapi.getPhoneNumbers();
+    
+    res.json({
+      success: true,
+      phoneNumbers: phoneNumbers
+    });
+  } catch (error) {
+    console.error('Error getting phone numbers:', error);
+    res.status(500).json({
+      error: 'Failed to get phone numbers'
+    });
+  }
+});
 
 // Call monitoring endpoints
 app.get('/calls', async (req, res) => {
