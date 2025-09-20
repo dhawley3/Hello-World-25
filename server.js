@@ -276,6 +276,108 @@ app.post('/mock-csr', (req, res) => {
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));
 
+// Call monitoring endpoints
+app.get('/calls', async (req, res) => {
+  try {
+    if (!vapi || !process.env.VAPI_API_KEY) {
+      return res.status(400).json({
+        error: 'Vapi not configured'
+      });
+    }
+
+    const { limit = 50, offset = 0 } = req.query;
+    const calls = await vapi.getAllCalls(parseInt(limit), parseInt(offset));
+    
+    res.json({
+      success: true,
+      calls: calls,
+      total: calls.length
+    });
+  } catch (error) {
+    console.error('Error getting calls:', error);
+    res.status(500).json({
+      error: 'Failed to get calls'
+    });
+  }
+});
+
+// Get specific call details
+app.get('/calls/:callId', async (req, res) => {
+  try {
+    const { callId } = req.params;
+    
+    if (!vapi || !process.env.VAPI_API_KEY) {
+      return res.status(400).json({
+        error: 'Vapi not configured'
+      });
+    }
+
+    const callDetails = await vapi.getCallStatus(callId);
+    const recording = await vapi.getCallRecording(callId).catch(() => null);
+    
+    res.json({
+      success: true,
+      call: callDetails,
+      recording: recording
+    });
+  } catch (error) {
+    console.error('Error getting call details:', error);
+    res.status(500).json({
+      error: 'Failed to get call details'
+    });
+  }
+});
+
+// Get call transcript
+app.get('/calls/:callId/transcript', async (req, res) => {
+  try {
+    const { callId } = req.params;
+    
+    if (!vapi || !process.env.VAPI_API_KEY) {
+      return res.status(400).json({
+        error: 'Vapi not configured'
+      });
+    }
+
+    const transcript = await vapi.getCallTranscript(callId);
+    
+    res.json({
+      success: true,
+      transcript: transcript
+    });
+  } catch (error) {
+    console.error('Error getting call transcript:', error);
+    res.status(500).json({
+      error: 'Failed to get call transcript'
+    });
+  }
+});
+
+// Get call events (real-time monitoring)
+app.get('/calls/:callId/events', async (req, res) => {
+  try {
+    const { callId } = req.params;
+    
+    if (!vapi || !process.env.VAPI_API_KEY) {
+      return res.status(400).json({
+        error: 'Vapi not configured'
+      });
+    }
+
+    const events = await vapi.getCallEvents(callId);
+    
+    res.json({
+      success: true,
+      events: events
+    });
+  } catch (error) {
+    console.error('Error getting call events:', error);
+    res.status(500).json({
+      error: 'Failed to get call events'
+    });
+  }
+});
+
 // Simulate negotiation process (replace with actual Vapi integration)
 function simulateNegotiation(negotiationId) {
   console.log(`Simulating negotiation for ${negotiationId}`);

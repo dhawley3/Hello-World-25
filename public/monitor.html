@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Call Monitor - Vapi Customer Service</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .nav {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .nav a {
+            color: #667eea;
+            text-decoration: none;
+            margin-right: 20px;
+            font-weight: 500;
+        }
+
+        .nav a:hover {
+            color: #764ba2;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .call-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .call-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .call-id {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .call-status {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status-queued { background: #fff3cd; color: #856404; }
+        .status-ringing { background: #d1ecf1; color: #0c5460; }
+        .status-in-progress { background: #d4edda; color: #155724; }
+        .status-ended { background: #f8d7da; color: #721c24; }
+
+        .call-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .detail-label {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .detail-value {
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .call-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #764ba2;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .transcript {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .refresh-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            background: #764ba2;
+            transform: rotate(180deg);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📞 Call Monitor</h1>
+            <p>Real-time monitoring of your Vapi customer service calls</p>
+        </div>
+
+        <div class="nav">
+            <a href="/">← Back to Negotiation</a>
+            <a href="#" onclick="refreshCalls()">🔄 Refresh</a>
+        </div>
+
+        <div class="content">
+            <div id="callsContainer">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading calls...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for call details -->
+    <div id="callModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
+    <!-- Refresh button -->
+    <button class="refresh-btn" onclick="refreshCalls()" title="Refresh calls">
+        🔄
+    </button>
+
+    <script>
+        let calls = [];
+
+        // Load calls on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshCalls();
+            // Auto-refresh every 30 seconds
+            setInterval(refreshCalls, 30000);
+        });
+
+        async function refreshCalls() {
+            try {
+                const response = await fetch('/calls');
+                const data = await response.json();
+                
+                if (data.success) {
+                    calls = data.calls;
+                    displayCalls(calls);
+                } else {
+                    showError('Failed to load calls');
+                }
+            } catch (error) {
+                console.error('Error loading calls:', error);
+                showError('Error loading calls');
+            }
+        }
+
+        function displayCalls(calls) {
+            const container = document.getElementById('callsContainer');
+            
+            if (calls.length === 0) {
+                container.innerHTML = `
+                    <div class="loading">
+                        <h3>No calls found</h3>
+                        <p>Start a negotiation to see calls here</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = calls.map(call => `
+                <div class="call-card">
+                    <div class="call-header">
+                        <div class="call-id">Call ID: ${call.id}</div>
+                        <div class="call-status status-${call.status}">${call.status}</div>
+                    </div>
+                    <div class="call-details">
+                        <div class="detail-item">
+                            <div class="detail-label">Customer Number</div>
+                            <div class="detail-value">${call.customer?.number || 'N/A'}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Start Time</div>
+                            <div class="detail-value">${new Date(call.createdAt).toLocaleString()}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Duration</div>
+                            <div class="detail-value">${call.duration || 'N/A'}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Cost</div>
+                            <div class="detail-value">$${call.cost || 'N/A'}</div>
+                        </div>
+                    </div>
+                    <div class="call-actions">
+                        <button class="btn btn-primary" onclick="viewCallDetails('${call.id}')">
+                            📋 View Details
+                        </button>
+                        <button class="btn btn-secondary" onclick="viewCallTranscript('${call.id}')">
+                            📝 Transcript
+                        </button>
+                        <button class="btn btn-success" onclick="viewCallEvents('${call.id}')">
+                            📊 Events
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function viewCallDetails(callId) {
+            try {
+                const response = await fetch(`/calls/${callId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const call = data.call;
+                    const recording = data.recording;
+                    
+                    document.getElementById('modalContent').innerHTML = `
+                        <h2>Call Details: ${callId}</h2>
+                        <div class="call-details">
+                            <div class="detail-item">
+                                <div class="detail-label">Status</div>
+                                <div class="detail-value">${call.status}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Customer Number</div>
+                                <div class="detail-value">${call.customer?.number || 'N/A'}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Start Time</div>
+                                <div class="detail-value">${new Date(call.createdAt).toLocaleString()}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">End Time</div>
+                                <div class="detail-value">${call.endedAt ? new Date(call.endedAt).toLocaleString() : 'N/A'}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Duration</div>
+                                <div class="detail-value">${call.duration || 'N/A'}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Cost</div>
+                                <div class="detail-value">$${call.cost || 'N/A'}</div>
+                            </div>
+                        </div>
+                        ${recording ? `
+                            <h3>Recording</h3>
+                            <p>Duration: ${recording.duration}</p>
+                            ${recording.recordingUrl ? `<a href="${recording.recordingUrl}" target="_blank" class="btn btn-primary">🎵 Play Recording</a>` : ''}
+                            ${recording.transcriptionUrl ? `<a href="${recording.transcriptionUrl}" target="_blank" class="btn btn-secondary">📄 View Transcript</a>` : ''}
+                        ` : ''}
+                    `;
+                    
+                    document.getElementById('callModal').style.display = 'block';
+                } else {
+                    showError('Failed to load call details');
+                }
+            } catch (error) {
+                console.error('Error loading call details:', error);
+                showError('Error loading call details');
+            }
+        }
+
+        async function viewCallTranscript(callId) {
+            try {
+                const response = await fetch(`/calls/${callId}/transcript`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('modalContent').innerHTML = `
+                        <h2>Call Transcript: ${callId}</h2>
+                        <div class="transcript">${data.transcript || 'No transcript available'}</div>
+                    `;
+                    
+                    document.getElementById('callModal').style.display = 'block';
+                } else {
+                    showError('Failed to load transcript');
+                }
+            } catch (error) {
+                console.error('Error loading transcript:', error);
+                showError('Error loading transcript');
+            }
+        }
+
+        async function viewCallEvents(callId) {
+            try {
+                const response = await fetch(`/calls/${callId}/events`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('modalContent').innerHTML = `
+                        <h2>Call Events: ${callId}</h2>
+                        <div class="transcript">${JSON.stringify(data.events, null, 2)}</div>
+                    `;
+                    
+                    document.getElementById('callModal').style.display = 'block';
+                } else {
+                    showError('Failed to load events');
+                }
+            } catch (error) {
+                console.error('Error loading events:', error);
+                showError('Error loading events');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('callModal').style.display = 'none';
+        }
+
+        function showError(message) {
+            document.getElementById('callsContainer').innerHTML = `
+                <div class="loading">
+                    <h3 style="color: #dc3545;">Error</h3>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('callModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+    </script>
+</body>
+</html>

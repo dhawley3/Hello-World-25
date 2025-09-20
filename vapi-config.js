@@ -168,11 +168,18 @@ REMEMBER: Your goal is to get the best possible outcome for the customer.`;
       customer: {
         number: customerPhoneNumber
       },
+      // Enable call monitoring and recording
+      recordingEnabled: true,
+      transcriptionEnabled: true,
+      // Enable real-time monitoring
+      monitoringEnabled: true,
       metadata: {
         userMessage: userMessage,
         orderNumber: orderNumber,
         screenshotUrl: screenshotUrl,
-        requestType: requestType
+        requestType: requestType,
+        // Add timestamp for tracking
+        startTime: new Date().toISOString()
       }
     };
 
@@ -219,6 +226,70 @@ REMEMBER: Your goal is to get the best possible outcome for the customer.`;
       return response.data;
     } catch (error) {
       console.error('Error ending call:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  // Get call recording URL
+  async getCallRecording(callId) {
+    try {
+      const response = await axios.get(
+        `${this.baseURL}/call/${callId}`,
+        { headers: this.headers }
+      );
+      
+      return {
+        recordingUrl: response.data.recordingUrl,
+        transcriptionUrl: response.data.transcriptionUrl,
+        duration: response.data.duration
+      };
+    } catch (error) {
+      console.error('Error getting call recording:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  // Get call transcript
+  async getCallTranscript(callId) {
+    try {
+      const response = await axios.get(
+        `${this.baseURL}/call/${callId}/transcript`,
+        { headers: this.headers }
+      );
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error getting call transcript:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  // Get call events (real-time monitoring)
+  async getCallEvents(callId) {
+    try {
+      const response = await axios.get(
+        `${this.baseURL}/call/${callId}/events`,
+        { headers: this.headers }
+      );
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error getting call events:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  // Get all calls with filtering
+  async getAllCalls(limit = 50, offset = 0) {
+    try {
+      const response = await axios.get(
+        `${this.baseURL}/call?limit=${limit}&offset=${offset}`,
+        { headers: this.headers }
+      );
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error getting all calls:', error.response?.data || error.message);
       throw error;
     }
   }
