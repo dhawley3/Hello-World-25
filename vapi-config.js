@@ -123,18 +123,21 @@ SPECIFIC INSTRUCTIONS FOR APPOINTMENT CANCELLATIONS:
 
 REMEMBER: Be clear about cancellation policies and any associated fees.`;
 
-      case 'bill':
+      case 'subscription':
         return `${basePrompt}
 
-SPECIFIC INSTRUCTIONS FOR BILL NEGOTIATIONS:
+SPECIFIC INSTRUCTIONS FOR SUBSCRIPTION CANCELLATIONS:
 1. Start by saying: "Hello, I'm calling about my bill ${orderNumber || 'account'}."
-2. Explain the customer's concerns about their current charges.
-3. Negotiate for better rates or dispute incorrect charges.
-4. Be persistent but respectful in seeking fair resolution.
-5. Get confirmation of any changes made to the account.
-6. End with: "Thank you. Could I get a confirmation code for these changes?"
+2. Generate an opening statement for canceling a subscription with account number ABC123.
+3. Generate an explanation for canceling because the service doesn't meet expectations.
+4. Create a script for canceling due to duplicate charges or billing errors.
+5. Generate a script for canceling due to technical issues with the service.
+6. Write a script for disputing incorrect charges before canceling.
+7. Be persistent but respectful in seeking fair resolution.
+8. Get confirmation of any changes made to the account.
+9. End with: "Thank you. Could I get a confirmation code for these changes?"
 
-REMEMBER: Bill negotiations may take time. Be patient but persistent.`;
+REMEMBER: It may take time. Be patient but persistent.`;
 
       default:
         return `${basePrompt}
