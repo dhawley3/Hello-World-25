@@ -128,15 +128,19 @@ app.post('/start', upload.single('screenshot'), async (req, res) => {
 
     console.log('Starting negotiation:', vapiData);
     
-    // Try to use Vapi if configured, otherwise simulate
-    if (vapi && process.env.VAPI_ASSISTANT_ID) {
+    // Use Vapi for real calls
+    if (vapi && process.env.VAPI_API_KEY) {
       try {
-        // For demo purposes, we'll use a mock phone number
-        // In production, you'd want to use actual customer service numbers
-        const mockCSRNumber = "+1234567890"; // Replace with actual CSR number
+        // You need to provide a real customer service phone number
+        // For testing, you can use your own number or a test number
+        const customerServiceNumber = process.env.CUSTOMER_SERVICE_NUMBER || "+1234567890";
+        
+        if (customerServiceNumber === "+1234567890") {
+          console.log('⚠️  Using default test number. Please set CUSTOMER_SERVICE_NUMBER in .env for real calls.');
+        }
         
         const callResult = await vapi.startCall(
-          mockCSRNumber,
+          customerServiceNumber,
           vapiData.userMessage,
           vapiData.orderNumber,
           vapiData.screenshot
@@ -145,20 +149,19 @@ app.post('/start', upload.single('screenshot'), async (req, res) => {
         negotiations[negotiationId].vapiCallId = callResult.id;
         negotiations[negotiationId].status = 'in_progress';
         
-        console.log('Vapi call started:', callResult.id);
+        console.log('✅ Vapi call started successfully:', callResult.id);
+        console.log(`📞 Calling: ${customerServiceNumber}`);
+        console.log(`🎯 Request type: ${vapi.detectRequestType(vapiData.userMessage)}`);
+        
       } catch (error) {
-        console.error('Vapi call failed, falling back to simulation:', error);
-        // Fall back to simulation if Vapi fails
-        setTimeout(() => {
-          simulateNegotiation(negotiationId);
-        }, 2000);
+        console.error('❌ Vapi call failed:', error.response?.data || error.message);
+        negotiations[negotiationId].status = 'error';
+        negotiations[negotiationId].error = error.message;
       }
     } else {
-      console.log('Vapi not configured, using simulation');
-      // Simulate Vapi call if not configured
-      setTimeout(() => {
-        simulateNegotiation(negotiationId);
-      }, 2000);
+      console.log('❌ Vapi not configured. Please add VAPI_API_KEY to .env file');
+      negotiations[negotiationId].status = 'error';
+      negotiations[negotiationId].error = 'Vapi API key not configured';
     }
 
     res.json({

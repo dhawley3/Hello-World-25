@@ -37,9 +37,9 @@ An AI-powered customer service negotiation system that uses Vapi to automaticall
    
    Edit `.env` file:
    ```env
-   # Vapi Configuration (Optional - for real voice calls)
+   # Vapi Configuration (Required for real voice calls)
    VAPI_API_KEY=your_vapi_api_key_here
-   VAPI_ASSISTANT_ID=your_vapi_assistant_id_here
+   CUSTOMER_SERVICE_NUMBER=+1234567890
    
    # Server Configuration
    PORT=3000
@@ -111,25 +111,35 @@ An AI-powered customer service negotiation system that uses Vapi to automaticall
 
 ## 🔌 Vapi Integration
 
-### Setup Vapi (Optional)
+### Setup Vapi (Required for Real Calls)
 
 1. **Get Vapi API Key**
    - Sign up at [vapi.ai](https://vapi.ai)
    - Get your API key from the dashboard
+   - Add it to your `.env` file as `VAPI_API_KEY`
 
-2. **Configure Assistant**
-   - The system automatically creates an assistant with negotiation capabilities
-   - Assistant is configured to be professional and persistent
+2. **Configure Customer Service Number**
+   - Set `CUSTOMER_SERVICE_NUMBER` in your `.env` file
+   - Use the actual customer service number you want to call
+   - For testing, you can use your own number
 
-3. **Test with Real Calls**
-   - Update `mockCSRNumber` in `server.js` with actual customer service numbers
-   - The AI will make real voice calls to negotiate
+3. **Dynamic Agent Behavior**
+   - The system automatically detects request type (refund, return, appointment, bill)
+   - Creates specialized AI agents for each scenario
+   - Each agent has tailored conversation flows and negotiation strategies
 
-### Without Vapi
+4. **Real Voice Calls**
+   - The AI will make actual phone calls to customer service
+   - Agents adapt their approach based on the customer's specific request
+   - All calls include proper greetings and professional conversation flow
 
-- The system falls back to simulation mode
-- Mock customer service responses are used
-- Perfect for testing and demos
+### Request Types Supported
+
+- **Refunds**: "Get me a refund for my order"
+- **Returns**: "I want to return this product"
+- **Appointments**: "Cancel my appointment"
+- **Bill Negotiations**: "Negotiate my internet bill"
+- **General**: Any other customer service request
 
 ## 🎨 Frontend Features
 
