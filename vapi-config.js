@@ -67,8 +67,8 @@ class VapiIntegration {
       return 'return';
     } else if (message.includes('cancel') && (message.includes('appointment') || message.includes('booking'))) {
       return 'appointment';
-    } else if (message.includes('bill') || message.includes('charge') || message.includes('rate') || message.includes('negotiate')) {
-      return 'bill';
+    } else if (message.includes('cancel') || message.includes('subscription') || message.includes('rate')) {
+      return 'subscription';
     } else {
       return 'general';
     }
@@ -102,10 +102,11 @@ REMEMBER: Be firm but respectful. The customer deserves a fair resolution.`;
 SPECIFIC INSTRUCTIONS FOR RETURN REQUESTS:
 1. Start by saying: "Hello, I'm calling about a return request for order ${orderNumber || 'the attached screenshot'}."
 2. Explain what the customer wants to return and why.
-3. Inquire about return process, shipping labels, and refund timeline.
-4. Confirm return policy details and any restocking fees.
+3. Generate questions to ask about the return process and timeline.
+4. Draft questions about return policy details and restocking fees and confirm with the customer.
 5. Get confirmation code or return authorization number.
-6. End with: "Thank you. Could I get a return authorization number or confirmation code?"
+6. Generate a script for explaining what item needs to be returned and why
+7. End with: "Thank you. Could I get a return authorization number or confirmation code?"
 
 REMEMBER: Ensure the customer understands the return process completely.`;
 
