@@ -88,8 +88,23 @@ app.get('/', (req, res) => {
 // Start negotiation endpoint
 app.post('/start', upload.single('screenshot'), async (req, res) => {
   try {
-    const { prompt, orderNumber } = req.body;
+    const { phoneNumber, prompt, orderNumber } = req.body;
     const screenshot = req.file;
+
+    // Validation: Must have phone number
+    if (!phoneNumber) {
+      return res.status(400).json({
+        error: 'Customer service phone number is required'
+      });
+    }
+
+    // Validate phone number format
+    const phoneRegex = /^\+[1-9]\d{1,14}$/;
+    if (!phoneRegex.test(phoneNumber.replace(/[\s-]/g, ''))) {
+      return res.status(400).json({
+        error: 'Please enter a valid phone number starting with + (e.g., +1-800-555-0123)'
+      });
+    }
 
     // Validation: Must have either order number or screenshot
     if (!orderNumber && !screenshot) {
@@ -111,6 +126,7 @@ app.post('/start', upload.single('screenshot'), async (req, res) => {
     negotiations[negotiationId] = {
       id: negotiationId,
       status: 'initiated',
+      phoneNumber: phoneNumber,
       prompt,
       orderNumber,
       screenshot: screenshot ? screenshot.filename : null,
@@ -120,6 +136,7 @@ app.post('/start', upload.single('screenshot'), async (req, res) => {
 
     // Prepare data for Vapi
     const vapiData = {
+      phoneNumber: phoneNumber,
       userMessage: prompt,
       orderNumber: orderNumber,
       screenshot: screenshot ? `/uploads/${screenshot.filename}` : null,
@@ -129,18 +146,12 @@ app.post('/start', upload.single('screenshot'), async (req, res) => {
     console.log('Starting negotiation:', vapiData);
     
     // Use Vapi for real calls
-    if (vapi && process.env.VAPI_API_KEY) {
+    if (vapi && process.env.VAPI_API_KEY && process.env.VAPI_ASSISTANT_ID && process.env.VAPI_PHONE_NUMBER_ID) {
       try {
-        // You need to provide a real customer service phone number
-        // For testing, you can use your own number or a test number
-        const customerServiceNumber = process.env.CUSTOMER_SERVICE_NUMBER || "+1234567890";
-        
-        if (customerServiceNumber === "+1234567890") {
-          console.log('⚠️  Using default test number. Please set CUSTOMER_SERVICE_NUMBER in .env for real calls.');
-        }
+        console.log(`📞 Calling customer service: ${phoneNumber}`);
         
         const callResult = await vapi.startCall(
-          customerServiceNumber,
+          phoneNumber,
           vapiData.userMessage,
           vapiData.orderNumber,
           vapiData.screenshot
@@ -150,7 +161,7 @@ app.post('/start', upload.single('screenshot'), async (req, res) => {
         negotiations[negotiationId].status = 'in_progress';
         
         console.log('✅ Vapi call started successfully:', callResult.id);
-        console.log(`📞 Calling: ${customerServiceNumber}`);
+        console.log(`📞 Calling: ${phoneNumber}`);
         console.log(`🎯 Request type: ${vapi.detectRequestType(vapiData.userMessage)}`);
         
       } catch (error) {
@@ -159,9 +170,9 @@ app.post('/start', upload.single('screenshot'), async (req, res) => {
         negotiations[negotiationId].error = error.message;
       }
     } else {
-      console.log('❌ Vapi not configured. Please add VAPI_API_KEY to .env file');
+      console.log('❌ Vapi not configured. Please add VAPI_API_KEY, VAPI_ASSISTANT_ID, and VAPI_PHONE_NUMBER_ID to .env file');
       negotiations[negotiationId].status = 'error';
-      negotiations[negotiationId].error = 'Vapi API key not configured';
+      negotiations[negotiationId].error = 'Vapi configuration incomplete';
     }
 
     res.json({

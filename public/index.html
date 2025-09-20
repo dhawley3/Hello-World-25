@@ -244,12 +244,24 @@
 
         <div class="content">
             <div class="requirements">
-                <strong>Requirements:</strong> You must provide either an order number OR upload a screenshot of your order to proceed.
+                <strong>Requirements:</strong> You must provide a customer service phone number, a description of your request, and either an order number OR upload a screenshot of your order.
             </div>
 
             <form id="negotiationForm">
                 <div class="form-group">
-                    <label for="prompt">What do you need help with?</label>
+                    <label for="phoneNumber">Customer Service Phone Number *</label>
+                    <input 
+                        type="tel" 
+                        id="phoneNumber" 
+                        name="phoneNumber" 
+                        placeholder="e.g., +1-800-555-0123"
+                        required
+                    >
+                    <small class="error-message" id="phoneError" style="display: none;"></small>
+                </div>
+
+                <div class="form-group">
+                    <label for="prompt">What do you need help with? *</label>
                     <textarea 
                         id="prompt" 
                         name="prompt" 
@@ -311,16 +323,34 @@
             }
         });
 
+        // Phone number validation
+        function validatePhoneNumber(phoneNumber) {
+            // Remove all non-digit characters except +
+            const cleaned = phoneNumber.replace(/[^\d+]/g, '');
+            // Check if it starts with + and has at least 10 digits
+            return cleaned.startsWith('+') && cleaned.length >= 11;
+        }
+
         // Form submission
         document.getElementById('negotiationForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const formData = new FormData();
+            const phoneNumber = document.getElementById('phoneNumber').value;
             const prompt = document.getElementById('prompt').value;
             const orderNumber = document.getElementById('orderNumber').value;
             const screenshot = document.getElementById('screenshot').files[0];
 
+            // Clear previous errors
+            document.getElementById('phoneError').style.display = 'none';
+
             // Validation
+            if (!validatePhoneNumber(phoneNumber)) {
+                document.getElementById('phoneError').textContent = 'Please enter a valid phone number starting with + (e.g., +1-800-555-0123)';
+                document.getElementById('phoneError').style.display = 'block';
+                return;
+            }
+
             if (!orderNumber && !screenshot) {
                 showError('Please provide either an order number or upload a screenshot.');
                 return;
@@ -332,6 +362,7 @@
             }
 
             // Prepare form data
+            formData.append('phoneNumber', phoneNumber);
             formData.append('prompt', prompt);
             if (orderNumber) formData.append('orderNumber', orderNumber);
             if (screenshot) formData.append('screenshot', screenshot);

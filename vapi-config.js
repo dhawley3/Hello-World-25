@@ -10,16 +10,16 @@ class VapiIntegration {
     };
   }
 
-  // Create or get assistant configuration based on user request
-  async createAssistant(userMessage, orderNumber, screenshotUrl, requestType) {
+  // Update existing assistant with dynamic prompt based on user request
+  async updateAssistant(userMessage, orderNumber, screenshotUrl, requestType) {
     // Determine the specific system prompt based on request type
     const systemPrompt = this.getSystemPrompt(requestType, userMessage, orderNumber);
     
     const assistantConfig = {
-      name: `Customer Service Agent - ${requestType}`,
+      name: `billbreaker - ${requestType}`,
       model: {
         provider: "openai",
-        model: "gpt-4",
+        model: "gpt-4o",
         messages: [
           {
             role: "system",
@@ -28,37 +28,35 @@ class VapiIntegration {
         ]
       },
       voice: {
-        provider: "elevenlabs",
-        voiceId: "21m00Tcm4TlvDq8ikWAM" // Professional female voice
+        provider: "vapi",
+        voiceId: "Elliot"
       },
-      firstMessage: "Hello, how can I help you today?",
+      firstMessage: "Hello.",
+      voicemailMessage: "Please call back when you're available.",
+      endCallMessage: "Goodbye.",
+      transcriber: {
+        model: "nova-2",
+        language: "en",
+        provider: "deepgram"
+      },
       serverUrl: process.env.SERVER_URL || "http://localhost:3000",
-      serverUrlSecret: "vapi_webhook_secret",
-      endCallMessage: "Thank you for your time. Have a great day!",
-      endCallPhrases: ["thank you", "goodbye", "have a good day", "bye"],
-      maxDurationSeconds: 600, // 10 minutes max for complex negotiations
-      silenceTimeoutSeconds: 30,
-      responseDelaySeconds: 1,
-      interruptionThreshold: 500,
-      voicemailDetection: false,
-      backgroundSound: "off",
       webhook: {
-        url: `${process.env.SERVER_URL || "http://localhost:3000"}/log`,
-        secret: "vapi_webhook_secret"
+        url: `${process.env.SERVER_URL || "http://localhost:3000"}/log`
       }
     };
 
     try {
-      const response = await axios.post(
-        `${this.baseURL}/assistant`,
+      // Update the existing assistant with the new configuration
+      const response = await axios.patch(
+        `${this.baseURL}/assistant/${process.env.VAPI_ASSISTANT_ID}`,
         assistantConfig,
         { headers: this.headers }
       );
       
-      console.log('Assistant created:', response.data);
+      console.log('Assistant updated:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error creating assistant:', error.response?.data || error.message);
+      console.error('Error updating assistant:', error.response?.data || error.message);
       throw error;
     }
   }
@@ -161,11 +159,12 @@ REMEMBER: Your goal is to get the best possible outcome for the customer.`;
     // Detect request type from user message
     const requestType = this.detectRequestType(userMessage);
     
-    // First create a dynamic assistant based on the request type
-    const assistant = await this.createAssistant(userMessage, orderNumber, screenshotUrl, requestType);
+    // First update the existing assistant with the new configuration
+    await this.updateAssistant(userMessage, orderNumber, screenshotUrl, requestType);
     
     const callConfig = {
-      assistantId: assistant.id,
+      assistantId: process.env.VAPI_ASSISTANT_ID,
+      phoneNumberId: process.env.VAPI_PHONE_NUMBER_ID,
       customer: {
         number: customerPhoneNumber
       },
@@ -173,8 +172,7 @@ REMEMBER: Your goal is to get the best possible outcome for the customer.`;
         userMessage: userMessage,
         orderNumber: orderNumber,
         screenshotUrl: screenshotUrl,
-        requestType: requestType,
-        assistantId: assistant.id
+        requestType: requestType
       }
     };
 
