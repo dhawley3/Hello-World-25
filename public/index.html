@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vapi Customer Service Negotiation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .file-upload {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .file-upload input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-upload-label {
+            display: block;
+            padding: 12px;
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            text-align: center;
+            color: #667eea;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .file-upload:hover .file-upload-label {
+            background-color: #f8f9ff;
+            border-color: #764ba2;
+        }
+
+        .file-selected {
+            background-color: #e8f5e8;
+            border-color: #28a745;
+            color: #28a745;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status-container {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .status-initiated {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+
+        .status-in-progress {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+
+        .status-completed {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .status-error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .status-content {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result-details {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: rgba(255,255,255,0.5);
+            border-radius: 8px;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .result-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .error-message {
+            color: #dc3545;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .success-message {
+            color: #28a745;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .requirements {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        .requirements strong {
+            color: #495057;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AI Customer Service Negotiator</h1>
+            <p>Let our AI agent handle your refunds, returns, and bill negotiations</p>
+        </div>
+
+        <div class="content">
+            <div class="requirements">
+                <strong>Requirements:</strong> You must provide either an order number OR upload a screenshot of your order to proceed.
+            </div>
+
+            <form id="negotiationForm">
+                <div class="form-group">
+                    <label for="prompt">What do you need help with?</label>
+                    <textarea 
+                        id="prompt" 
+                        name="prompt" 
+                        placeholder="e.g., Get me a refund for my Chipotle order, I want to return this defective product, negotiate my internet bill"
+                        required
+                    ></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="orderNumber">Order Number (Optional if you upload a screenshot)</label>
+                    <input 
+                        type="text" 
+                        id="orderNumber" 
+                        name="orderNumber" 
+                        placeholder="e.g., ORDER-12345"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label>Upload Order Screenshot (Optional if you provide order number)</label>
+                    <div class="file-upload">
+                        <input type="file" id="screenshot" name="screenshot" accept="image/*">
+                        <label for="screenshot" class="file-upload-label" id="fileLabel">
+                            📷 Click to upload screenshot or drag and drop
+                        </label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn" id="submitBtn">
+                    🚀 Start AI Negotiation
+                </button>
+            </form>
+
+            <div class="status-container" id="statusContainer">
+                <div class="status-content">
+                    <div class="spinner" id="spinner"></div>
+                    <div id="statusText">Starting negotiation...</div>
+                </div>
+                <div class="result-details" id="resultDetails" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentNegotiationId = null;
+        let statusInterval = null;
+
+        // File upload handling
+        document.getElementById('screenshot').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const label = document.getElementById('fileLabel');
+            
+            if (file) {
+                label.textContent = `📷 Selected: ${file.name}`;
+                label.classList.add('file-selected');
+            } else {
+                label.textContent = '📷 Click to upload screenshot or drag and drop';
+                label.classList.remove('file-selected');
+            }
+        });
+
+        // Form submission
+        document.getElementById('negotiationForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            const prompt = document.getElementById('prompt').value;
+            const orderNumber = document.getElementById('orderNumber').value;
+            const screenshot = document.getElementById('screenshot').files[0];
+
+            // Validation
+            if (!orderNumber && !screenshot) {
+                showError('Please provide either an order number or upload a screenshot.');
+                return;
+            }
+
+            if (!prompt.trim()) {
+                showError('Please describe what you need help with.');
+                return;
+            }
+
+            // Prepare form data
+            formData.append('prompt', prompt);
+            if (orderNumber) formData.append('orderNumber', orderNumber);
+            if (screenshot) formData.append('screenshot', screenshot);
+
+            // Show loading state
+            showStatus('initiated', 'Starting negotiation...');
+            document.getElementById('submitBtn').disabled = true;
+
+            try {
+                const response = await fetch('/start', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    currentNegotiationId = result.negotiationId;
+                    showStatus('in_progress', 'AI agent is negotiating with customer service...');
+                    startStatusPolling();
+                } else {
+                    showError(result.error || 'Failed to start negotiation');
+                    document.getElementById('submitBtn').disabled = false;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Network error. Please try again.');
+                document.getElementById('submitBtn').disabled = false;
+            }
+        });
+
+        function startStatusPolling() {
+            if (statusInterval) clearInterval(statusInterval);
+            
+            statusInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/status/${currentNegotiationId}`);
+                    const status = await response.json();
+
+                    if (status.status === 'completed') {
+                        showStatus('completed', 'Negotiation completed successfully!');
+                        showResults(status.result);
+                        clearInterval(statusInterval);
+                        document.getElementById('submitBtn').disabled = false;
+                    } else if (status.status === 'in_progress') {
+                        showStatus('in_progress', 'AI agent is negotiating with customer service...');
+                    } else if (status.status === 'initiated') {
+                        showStatus('initiated', 'Starting negotiation...');
+                    }
+                } catch (error) {
+                    console.error('Status polling error:', error);
+                    showError('Error checking status. Please refresh the page.');
+                    clearInterval(statusInterval);
+                    document.getElementById('submitBtn').disabled = false;
+                }
+            }, 2000);
+        }
+
+        function showStatus(type, message) {
+            const container = document.getElementById('statusContainer');
+            const text = document.getElementById('statusText');
+            const spinner = document.getElementById('spinner');
+            
+            container.className = `status-container status-${type}`;
+            text.textContent = message;
+            container.style.display = 'block';
+            
+            if (type === 'completed' || type === 'error') {
+                spinner.style.display = 'none';
+            } else {
+                spinner.style.display = 'block';
+            }
+        }
+
+        function showResults(result) {
+            const resultDetails = document.getElementById('resultDetails');
+            
+            resultDetails.innerHTML = `
+                <div class="result-item">
+                    <span>Refund Amount:</span>
+                    <span>$${result.refund}</span>
+                </div>
+                <div class="result-item">
+                    <span>Confirmation Code:</span>
+                    <span>${result.confirmationCode}</span>
+                </div>
+                <div class="result-item">
+                    <span>Completed At:</span>
+                    <span>${new Date(result.completedAt).toLocaleString()}</span>
+                </div>
+            `;
+            
+            resultDetails.style.display = 'block';
+        }
+
+        function showError(message) {
+            showStatus('error', message);
+            document.getElementById('spinner').style.display = 'none';
+            document.getElementById('submitBtn').disabled = false;
+        }
+
+        // Clear status polling on page unload
+        window.addEventListener('beforeunload', () => {
+            if (statusInterval) clearInterval(statusInterval);
+        });
+    </script>
+</body>
+</html>
